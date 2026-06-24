@@ -1,12 +1,15 @@
 #ifndef OPS_TASK_HPP
 #define OPS_TASK_HPP 1
 
+#include <iostream>
+#include <fstream>
 #include <string>
 #include <vector>
 
 #include "../utils/json"
+#include "../utils/systemfunc"
 
-namespace task {
+namespace ops::task {
 
 using json = nlohmann::json;
 
@@ -38,6 +41,34 @@ class Task {
     j.at("memory_limit").get_to(this->memory_limit);
   }
 
+  std::string get_code() const { return code; }
+
+  void create_task_folder(const std::string &folder_path = ".") {
+    std::string task_folder = folder_path + "/" + this->code;
+    if (utils::create_directory(task_folder)) {
+        std::cout << "Task folder created: " << task_folder << std::endl;
+    } else {
+        std::cerr << "Failed to create task folder: " << task_folder << std::endl;
+        return;
+    }
+    
+    json j;
+    to_json(j);
+    std::string json_file_path = task_folder + "/task.json";
+
+    std::ofstream fout;
+
+    fout.open(json_file_path);
+    if (fout.is_open()) {
+        std::cerr << "Task JSON file already exists and will be overwritten: " << json_file_path << std::endl;
+    }
+
+    fout << j.dump(4) << std::endl;
+    fout.close();
+
+    std::cout << "Task JSON file created: " << json_file_path << std::endl;   
+  }
+
  private:
   std::string code;
   std::string name;
@@ -66,8 +97,38 @@ class InteractiveTask : public Task {
       throw std::runtime_error("InteractiveTask must have interactive field");
     }
   }
+
+  void create_task_folder(const std::string &folder_path = ".") {
+    Task::create_task_folder(folder_path);
+    std::string task_folder = folder_path + "/" + this->get_code();
+    std::string json_file_path = task_folder + "/task.json";
+
+    std::ifstream fin(json_file_path);
+    if (!fin.is_open()) {
+        std::cerr << "Failed to open task JSON file for reading: " << json_file_path << std::endl;
+        return;
+    }
+
+    json j;
+    fin >> j;
+    fin.close();
+
+    // add the interactive field
+    j["interactive"] = true;
+
+    std::ofstream fout(json_file_path);
+    if (!fout.is_open()) {
+        std::cerr << "Failed to open task JSON file for writing: " << json_file_path << std::endl;
+        return;
+    }
+
+    fout << j.dump(4) << std::endl;
+    fout.close();
+
+    std::cout << "Task JSON file updated with interactive field: " << json_file_path << std::endl;
+  }
 };
 
-}  // namespace task
+}  // namespace ops::task
 
 #endif  // OPS_TASK_HPP
