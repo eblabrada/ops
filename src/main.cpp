@@ -1,0 +1,5 @@
+#include "all"
+
+int main() {
+    
+}
