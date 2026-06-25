@@ -1,8 +1,8 @@
 #ifndef OPS_TASK_HPP
 #define OPS_TASK_HPP 1
 
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -15,12 +15,8 @@ using json = nlohmann::json;
 
 class Task {
  public:
-  Task(std::string code, std::string name, std::vector<std::string> authors)
-      : code(std::move(code)),
-        name(std::move(name)),
-        authors(std::move(authors)) {}
-
-  void add_author(const std::string& author) { authors.push_back(author); }
+  Task(std::string code, std::string name)
+      : code(std::move(code)), name(std::move(name)) {}
 
   void set_time_limit(double limit) { time_limit = limit; }
   void set_memory_limit(int limit) { memory_limit = limit; }
@@ -28,7 +24,6 @@ class Task {
   void to_json(json& j) {
     j = json{{"code", code},
              {"name", name},
-             {"authors", authors},
              {"time_limit", time_limit},
              {"memory_limit", memory_limit}};
   }
@@ -36,22 +31,27 @@ class Task {
   void from_json(json& j) {
     j.at("code").get_to(this->code);
     j.at("name").get_to(this->name);
-    j.at("authors").get_to(this->authors);
     j.at("time_limit").get_to(this->time_limit);
     j.at("memory_limit").get_to(this->memory_limit);
   }
 
   std::string get_code() const { return code; }
 
-  void create_task_folder(const std::string &folder_path = ".") {
-    std::string task_folder = folder_path + "/" + this->code;
-    if (utils::create_directory(task_folder)) {
-        std::cout << "Task folder created: " << task_folder << std::endl;
-    } else {
-        std::cerr << "Failed to create task folder: " << task_folder << std::endl;
-        return;
+  bool create_task_folder(const std::string& folder_path = ".") {
+    if (!this->task_folder.empty()) {
+      std::cerr << "Task folder already exists: " << this->task_folder
+                << std::endl;
+      return false;
     }
-    
+
+    this->task_folder = folder_path + "/" + this->code;
+    if (utils::create_directory(task_folder)) {
+      std::cout << "Task folder created: " << task_folder << std::endl;
+    } else {
+      std::cerr << "Failed to create task folder: " << task_folder << std::endl;
+      return false;
+    }
+
     json j;
     to_json(j);
     std::string json_file_path = task_folder + "/task.json";
@@ -59,22 +59,25 @@ class Task {
     std::ofstream fout;
 
     fout.open(json_file_path);
-    if (fout.is_open()) {
-        std::cerr << "Task JSON file already exists and will be overwritten: " << json_file_path << std::endl;
+    if (!fout.is_open()) {
+      throw std::runtime_error("Failed to open task JSON file for writing: " +
+                               json_file_path);
+      return false;
     }
 
     fout << j.dump(4) << std::endl;
     fout.close();
 
-    std::cout << "Task JSON file created: " << json_file_path << std::endl;   
+    std::cout << "Task JSON file created: " << json_file_path << std::endl;
+    return true;
   }
 
  private:
   std::string code;
   std::string name;
-  std::vector<std::string> authors;
   double time_limit = 2.0;    // in seconds
   int memory_limit = 262144;  // in kilobytes
+  std::string task_folder;
 };
 
 class InteractiveTask : public Task {
@@ -98,15 +101,19 @@ class InteractiveTask : public Task {
     }
   }
 
-  void create_task_folder(const std::string &folder_path = ".") {
-    Task::create_task_folder(folder_path);
+  bool create_task_folder(const std::string& folder_path = ".") {
+    if (!Task::create_task_folder(folder_path)) {
+      return false;
+    }
+
     std::string task_folder = folder_path + "/" + this->get_code();
     std::string json_file_path = task_folder + "/task.json";
 
     std::ifstream fin(json_file_path);
     if (!fin.is_open()) {
-        std::cerr << "Failed to open task JSON file for reading: " << json_file_path << std::endl;
-        return;
+      throw std::runtime_error("Failed to open task JSON file for reading: " +
+                               json_file_path);
+      return false;
     }
 
     json j;
@@ -118,14 +125,17 @@ class InteractiveTask : public Task {
 
     std::ofstream fout(json_file_path);
     if (!fout.is_open()) {
-        std::cerr << "Failed to open task JSON file for writing: " << json_file_path << std::endl;
-        return;
+      throw std::runtime_error("Failed to open task JSON file for writing: " +
+                               json_file_path);
+      return false;
     }
 
     fout << j.dump(4) << std::endl;
     fout.close();
 
-    std::cout << "Task JSON file updated with interactive field: " << json_file_path << std::endl;
+    std::cout << "Task JSON file updated with interactive field: "
+              << json_file_path << std::endl;
+    return true;
   }
 };
 
