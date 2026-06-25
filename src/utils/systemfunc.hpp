@@ -20,13 +20,14 @@ std::string exec_bash_function(const std::string& cmd) {
   while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
     result += buffer.data();
   }
+  
   return result;
 }
 
 bool create_directory(const std::string& path) {
   std::string cmd = "mkdir -p " + path;
   std::string ret = exec_bash_function(cmd);
-  return !ret.empty();
+  return ret.empty();
 }
 
 }  // namespace ops::utils
