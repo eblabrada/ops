@@ -12,6 +12,7 @@
 namespace ops::task {
 
 using json = nlohmann::json;
+using ExecResult = ops::utils::ExecResult;
 
 class Task {
  public:
@@ -39,9 +40,7 @@ class Task {
     j.at("memory_limit").get_to(memory_limit);
   }
 
-  virtual void load_from_json(const json& j) {
-    load_common(j);
-  }
+  virtual void load_from_json(const json& j) { load_common(j); }
 
   virtual void to_json(json& j) const {
     j = json{{"type", type()},
@@ -53,21 +52,16 @@ class Task {
 
   static std::unique_ptr<Task> from_json(const json& j);
 
-  bool create_task_folder(const std::string& folder_path = ".") {
+  ExecResult create_task_folder(const std::string& folder_path = ".") {
     if (!this->task_folder.empty()) {
-      std::cerr << "Task folder already exists: " << this->task_folder
-                << std::endl;
-      return false;
+      return ExecResult{1, "task folder already exists"};
     }
 
     this->task_folder = folder_path + "/" + this->code;
 
-    if (!utils::create_directory(task_folder)) {
-      std::cerr << "Failed to create task folder: " << task_folder << std::endl;
-      return false;
+    if (!utils::create_directory(task_folder).success()) {
+      return ExecResult{2, "failed to create task folder"};
     }
-    
-    std::cout << "Task folder created: " << task_folder << std::endl;
 
     json j;
     this->to_json(j);
@@ -82,8 +76,7 @@ class Task {
 
     fout << j.dump(4) << std::endl;
 
-    std::cout << "Task JSON file created: " << json_file_path << std::endl;
-    return true;
+    return ExecResult{0, "task folder created successfully"};
   }
 
  protected:
