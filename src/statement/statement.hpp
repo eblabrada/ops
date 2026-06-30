@@ -1,9 +1,6 @@
 #ifndef OPS_STATEMENT_HPP
 #define OPS_STATEMENT_HPP 1
 
-
-#include <fstream>
-#include <iostream>
 #include <string>
 #include <vector>
 
@@ -22,10 +19,14 @@ class Statement{
      virtual ~Statement() = default;
 
      Statement() = default;
-     Statement(std::vector<StatementSection>);
-    
+     Statement(std::string code, std::vector<StatementSection> sections);
+
+     void init();
+
+     void set_code(std::string new_code);
      void set_sections(std::vector<StatementSection> new_sections);
-    
+
+     const std::string& get_code() const;
      const std::vector<StatementSection>& get_sections() const;
 
      void add_section(std::string name, std::string text);
@@ -33,12 +34,14 @@ class Statement{
 
      void load_common(const json& j);
      virtual void load_from_json(const json& j);
-     virtual void to_json(json& j);
+     virtual void to_json(json& j) const;
 
      ExecResult create_statement_folder(const std::string& folder_path = ".");
 
     protected:
-     std::map<std::string, std::string> sections;
+     std::string code;
+     std::vector<StatementSection> sections;
+     std::string statement_folder;
 };
 
 class StatementSection{
@@ -46,13 +49,15 @@ class StatementSection{
      virtual ~StatementSection() = default;
 
      StatementSection() = default;
-     StatementSection(std::string name, std::string text);
+     StatementSection(std::string name, std::string text = "");
 
-     void set_name(std::string name);
-     void set_text(std::string text);
+     void set_name(std::string new_name);
+     void set_text(std::string new_text);
 
-     std::string& get_name() const;
-     std::string& get_text() const;
+     const std::string& get_name() const;
+     const std::string& get_text() const;
+
+     virtual void to_json(json& j) const;
     
     protected:
      std::string name;
